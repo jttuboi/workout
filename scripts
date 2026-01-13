@@ -1,0 +1,816 @@
+#!/bin/bash
+
+# ===== DADOS =====
+
+SCRIPT_VERSION="1.0.0"
+DEFAULT_DOMAIN="br.com.sidedoor"
+
+# ===== ESTILOS =====
+
+BOLD="\033[1m"
+ITALIC="\033[3m"
+UNDERLINE="\033[4m"
+INVERT="\033[7m"
+
+BLACK="\033[30m"
+RED="\033[31m"
+GREEN="\033[32m"
+YELLOW="\033[33m"
+BLUE="\033[34m"
+MAGENTA="\033[35m"
+CYAN="\033[36m"
+WHITE="\033[37m"
+
+BLACK_BRIGHT="\033[90m"
+RED_BRIGHT="\033[91m"
+GREEN_BRIGHT="\033[92m"
+YELLOW_BRIGHT="\033[93m"
+BLUE_BRIGHT="\033[94m"
+MAGENTA_BRIGHT="\033[95m"
+CYAN_BRIGHT="\033[96m"
+WHITE_BRIGHT="\033[97m"
+
+RESET="\033[0m"
+
+# ===== UTILS =====
+
+show_help2() {
+  printf "${GREEN}${BOLD}Ferramenta para gerenciamento de projetos e packages Flutter${RESET}\n"
+  printf "\n"
+  printf "${BOLD}Uso:${RESET}\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}./project.sh [command] [options]${RESET}\n"
+  printf "  ou\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}sh project.sh [command] [options]${RESET}\n"
+  printf "\n"
+  printf "${BOLD}Comandos:${RESET}\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}pubget [-p]                           ${RESET}Limpa o projeto e reinstala os packages\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}clean [-p]                            ${RESET}Limpa o projeto (removes build files, pubspec.lock, etc.)\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}format [-p]                           ${RESET}Formata o código\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}update-version [flutter] [dart] [-p]  ${RESET}Atualiza a versão do Flutter e Dart\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}                                      [flutter] --flutter=<versão>${RESET}\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}                                      [dart] --dart=<versão>${RESET}\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}setup [env]                           ${RESET}Atualiza o .env\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}                                      [env] e2e/dev/prod${RESET}\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}build [platform] [mode]               ${RESET}Builda o projeto para a plataforma especificada\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}                                      [platform] store/mobile/desktop/all/aar/apk/appbundle/bundle/ios/ios-framework/ipa/linux/macos/macos-framework/web/windows\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}                                      [mode] --debug/--profile/--release${RESET}\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}release [checkin]                     ${RESET}Um grupo de comandos para fazer o build manualmente\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}                                      [checkin] checkin (é apenas um caso específico para o bloomy checkin que não envia para stores)\n"
+  # printf "  ${BLACK_BRIGHT}${ITALIC}new-pkg <name>                       ${RESET}Cria um novo package\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}list                                  ${RESET}Lista todos os packages disponíveis\n"
+  printf "\n"
+  printf "${BOLD}Opções de Package:${RESET}\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}-p                                    ${RESET}Executa o comando em todos os packages\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}--package=<nome>                      ${RESET}Executa o comando em um package específico\n"
+  printf "\n"
+  printf "${BOLD}Apoio:${RESET}"
+  printf "  ${BLACK_BRIGHT}${ITALIC}-h, --help                            ${RESET}Mostra o help\n"
+  printf "  ${BLACK_BRIGHT}${ITALIC}-v, --version                         ${RESET}Mostra a versão\n"
+}
+
+
+show_help() {
+  local col1_width=18 # coluna dos comandos
+  local col2_width=27 # coluna dos argumentos
+
+  printf "${GREEN}${BOLD}Ferramenta para gerenciamento de projetos e packages Flutter${RESET}\n"
+  printf "\n"
+
+  printf "${YELLOW}${BOLD}USO:${RESET}\n"
+  printf "  ${WHITE_BRIGHT}./scripts${RESET} ${GREEN}[command]${RESET} ${CYAN}[options]${RESET}\n"
+  printf "\n"
+
+  printf "${YELLOW}${BOLD}COMANDOS:${RESET}\n"
+  printf "  ${GREEN}%-*s${RESET} ${CYAN}%-*s${RESET} %s\n" $col1_width "pubget" $col2_width "[packages]" "Limpa o projeto e reinstala os packages"
+  printf "  %-*s ${BLACK_BRIGHT}%-*s %s${RESET}\n" $col1_width "" $col2_width "[packages]" "-p (Executa o comando em todos os packages)/--package=<nome> (Executa o comando em um package específico)"
+  printf "\n"
+  printf "  ${GREEN}%-*s${RESET} ${CYAN}%-*s${RESET} %s\n" $col1_width "clean" $col2_width "[packages]" "Limpa o projeto (removes build files, etc.)"
+  printf "  %-*s ${BLACK_BRIGHT}%-*s %s${RESET}\n" $col1_width "" $col2_width "[packages]" "-p (Executa o comando em todos os packages)/--package=<nome> (Executa o comando em um package específico)"
+  printf "\n"
+  printf "  ${GREEN}%-*s${RESET} ${CYAN}%-*s${RESET} %s\n" $col1_width "format" $col2_width "[packages]" "Formata o código"
+  printf "  %-*s ${BLACK_BRIGHT}%-*s %s${RESET}\n" $col1_width "" $col2_width "[packages]" "-p (Executa o comando em todos os packages)/--package=<nome> (Executa o comando em um package específico)"
+  printf "\n"
+  printf "  ${GREEN}%-*s${RESET} ${CYAN}%-*s${RESET} %s\n" $col1_width "update-version" $col2_width "[flutter] [dart] [packages]" "Atualiza a versão do Flutter e Dart"
+  printf "  %-*s ${BLACK_BRIGHT}%-*s %s${RESET}\n" $col1_width "" $col2_width "[flutter]" "--flutter=<versão>"
+  printf "  %-*s ${BLACK_BRIGHT}%-*s %s${RESET}\n" $col1_width "" $col2_width "[dart]" "--dart=<versão>"
+  printf "  %-*s ${BLACK_BRIGHT}%-*s %s${RESET}\n" $col1_width "" $col2_width "[packages]" "-p (Executa o comando em todos os packages)/--package=<nome> (Executa o comando em um package específico)"
+  printf "\n"
+  printf "  ${GREEN}%-*s${RESET} ${CYAN}%-*s${RESET} %s\n" $col1_width "setup" $col2_width "[env]" "Atualiza o .env"
+  printf "  %-*s ${BLACK_BRIGHT}%-*s %s${RESET}\n" $col1_width "" $col2_width "[env]" "e2e/dev/prod (default)"
+  printf "\n"
+  printf "  ${GREEN}%-*s${RESET} ${CYAN}%-*s${RESET} %s\n" $col1_width "install-apk" $col2_width "[mode]" "Instala o apk no android emulator. O emulador precisa estar aberto, caso contrário dará erro."
+  printf "  %-*s ${BLACK_BRIGHT}%-*s %s${RESET}\n" $col1_width "" $col2_width "[mode]" "--debug/--release (default)"
+  printf "\n"
+  printf "  ${GREEN}%-*s${RESET} ${CYAN}%-*s${RESET} %s\n" $col1_width "start-server" $col2_width "[path] [port]" "Reinicia o server local feito em DART."
+  printf "  %-*s ${BLACK_BRIGHT}%-*s %s${RESET}\n" $col1_width "" $col2_width "[path]" "Path da main do server. Normalmente está na pasta 'bin/'. (obrigatório)"
+  printf "  %-*s ${BLACK_BRIGHT}%-*s %s${RESET}\n" $col1_width "" $col2_width "[port]" "Porta em que deseja abrir o servidor/8080 (default)"
+  printf "\n"
+  printf "  ${GREEN}%-*s${RESET} ${CYAN}%-*s${RESET} %s\n" $col1_width "build" $col2_width "[platform] [mode]" "Builda o projeto para a plataforma especificada"
+  printf "  %-*s ${BLACK_BRIGHT}%-*s %s${RESET}\n" $col1_width "" $col2_width "[platform]" "store (default)/mobile/desktop/all/aar/apk/appbundle/bundle/ios/ios-framework/ipa/linux/macos/macos-framework/web/windows"
+  printf "  %-*s ${BLACK_BRIGHT}%-*s %s${RESET}\n" $col1_width "" $col2_width "[mode]" "--debug/--profile/--release (default)"
+  printf "\n"
+  printf "  ${GREEN}%-*s${RESET} ${CYAN}%-*s${RESET} %s\n" $col1_width "release" $col2_width "[deploy_in]" "Um grupo de comandos para fazer o build manualmente"
+  printf "  %-*s ${BLACK_BRIGHT}%-*s %s${RESET}\n" $col1_width "" $col2_width "[deploy_in]" "checkin/homolog/prod (default)"
+  printf "\n"
+  printf "  ${GREEN}%-*s${RESET} ${CYAN}%-*s${RESET} %s\n" $col1_width "open-emulator" $col2_width "" "Abre o emulador do android"
+  printf "\n"
+  #   # printf "  ${BLACK_BRIGHT}${ITALIC}new-pkg <name>                       ${RESET}Cria um novo package\n"
+  printf "  ${GREEN}%-*s${RESET} ${CYAN}%-*s${RESET} %s\n" $col1_width "list" $col2_width "" "Lista todos os packages disponíveis"
+  printf "\n"
+
+  printf "${YELLOW}${BOLD}AJUDA:${RESET}\n"
+  printf "  ${GREEN}%-*s${RESET} ${CYAN}%-*s${RESET} %s\n" $col1_width "-h, --help" $col2_width "" "Mostra esta mensagem de ajuda"
+  printf "  ${GREEN}%-*s${RESET} ${CYAN}%-*s${RESET} %s\n" $col1_width "-v, --version" $col2_width "" "Mostra a versão"
+  printf "\n"
+}
+
+
+show_header() { printf "${GREEN}${BOLD}===== $1 =====${RESET}\n"; }
+
+show_info() { printf "${BLUE}${BOLD}[i]${RESET} $1\n"; }
+
+show_success() { printf "${GREEN}${BOLD}[✓]${RESET} $1\n"; }
+
+show_warning() { printf "${YELLOW}${BOLD}[!]${RESET} $1\n"; }
+
+show_error() { printf "${RED}${BOLD}[✗]${RESET} $1\n" >&2; }
+
+run_command() { printf "${MAGENTA}>>${RESET} $1\n"; eval "$1"; }
+
+# ===== MÉTODOS PARA CONTROLE DE UM OU VÁRIOS PACKAGES =====
+
+get_all_packages() {
+  find . -name "pubspec.yaml" -type f | while read -r pubspec; do
+    local dir=$(dirname "$pubspec")
+    # Ignora se for um diretório example dentro de outro package
+    if [[ "$dir" != *"/example" ]]; then
+      echo "$dir"
+    fi
+  done | sort
+}
+
+get_package_path() {
+  local package_name=$1
+  if [ -d "$package_name" ] && [ -f "$package_name/pubspec.yaml" ]; then
+    echo "$package_name"
+  else
+    show_error "Package '$package_name' não encontrado"
+    return 1
+  fi
+}
+
+execute_in_package() {
+  local package_dir=$1
+  local command_func=$2
+  shift 2
+  
+  show_header "Executando em: $package_dir"
+  
+  if [[ "$package_dir" == "./font_awesome_flutter" && "$command_func" == "update_version_single" ]]; then
+    show_info "Não pode atualizar a versão do font_awesome_flutter automaticamente"
+    return 1
+  fi
+
+  local original_dir=$(pwd)
+  cd "$package_dir" || {
+    show_error "Não foi possível acessar o diretório: $package_dir"
+    return 1
+  }
+  
+  $command_func "$@"
+  local result=$?
+  
+  cd "$original_dir"
+  return $result
+}
+
+execute_in_packages() {
+  local packages_mode=$1
+  local specific_package=$2
+  local command_func=$3
+  shift 3
+  
+  case $packages_mode in
+    "all")
+      local packages=$(get_all_packages)
+      if [ -z "$packages" ]; then
+        show_error "Nenhum package encontrado"
+        return 1
+      fi
+      
+      echo "$packages" | while read -r package_dir; do
+        execute_in_package "$package_dir" "$command_func" "$@"
+      done
+      ;;
+    "specific")
+      local package_path=$(get_package_path "$specific_package")
+      if [ $? -eq 0 ]; then
+        execute_in_package "$package_path" "$command_func" "$@"
+      else
+        return 1
+      fi
+      ;;
+    "single")
+      # Executa no diretório atual (comportamento original)
+      if [ -f "pubspec.yaml" ]; then
+        $command_func "$@"
+      else
+        show_error "pubspec.yaml não encontrado no diretório atual"
+        return 1
+      fi
+      ;;
+  esac
+}
+
+
+parse_arguments() {
+  local packages_mode="single"
+  local specific_package=""
+  local remaining_args=()
+  
+  for arg in "$@"; do
+    case "$arg" in
+      -p)
+        packages_mode="all"
+        ;;
+      --package=*)
+        packages_mode="specific"
+        specific_package="${arg#*=}"
+        ;;
+      *)
+        remaining_args+=("$arg")
+        ;;
+    esac
+  done
+  
+  echo "$packages_mode|$specific_package|${remaining_args[*]}"
+}
+
+list_packages() {
+  show_header "Packages disponíveis"
+  local packages=$(get_all_packages)
+  if [ -z "$packages" ]; then
+    show_warning "Nenhum package encontrado"
+    return 1
+  fi
+  
+  echo "$packages" | while read -r package_dir; do
+    local package_name=$(basename "$package_dir")
+    if [ -f "$package_dir/pubspec.yaml" ]; then
+      local version=$(grep "^version:" "$package_dir/pubspec.yaml" | sed 's/version: *//')
+      printf "  ${CYAN}$package_name${RESET} ${BLACK_BRIGHT}($version)${RESET}\n"
+    else
+      printf "  ${CYAN}$package_name${RESET}\n"
+    fi
+  done
+}
+
+# ===== MÉTODOS DOS COMANDOS =====
+
+clean_project_single() {
+  show_header "Limpando projeto"
+  run_command "rm -f pubspec.lock"
+  run_command "flutter clean"
+  
+  if [ -d "example/" ]; then
+    run_command "rm -f example/pubspec.lock"
+  fi
+}
+
+pub_get_single() {
+  show_header "Executando pub get"
+  run_command "flutter pub get"
+
+  if [ -d "example/" ]; then
+    run_command "cd example && flutter pub get && cd .."
+  fi
+}
+
+pod_install_single() {
+  run_pod_install() {
+    if [ -f "Podfile" ]; then
+      run_command "rm -f Podfile.lock"
+      run_command "pod install --repo-update"
+    fi
+  }
+
+  show_header "Executando pod install"
+  
+  if [ -d "ios/" ]; then
+    run_command "cd ios"
+    run_pod_install
+    run_command "cd .."
+  fi
+
+  if [ -d "example/ios/" ]; then
+    run_command "cd example/ios"
+    run_pod_install
+    run_command "cd ../.."
+  fi
+  
+  if [ -d "macos/" ]; then
+    run_command "cd macos"
+    run_pod_install
+    run_command "cd .."
+  fi
+
+  if [ -d "example/macos/" ]; then
+    run_command "cd example/macos"
+    run_pod_install
+    run_command "cd ../.."
+  fi
+}
+
+run_build_runner_single() {
+  show_header "Executando build runner"
+  run_command "dart run build_runner build --delete-conflicting-outputs"
+}
+
+pubget_command() {
+  clean_project_single
+  pub_get_single
+  pod_install_single
+  run_build_runner_single
+}
+
+format_code_single() {
+  show_header "Formatando código"
+  run_command "dart format ."
+}
+
+build() {
+  local build_platform=$1
+  local build_mode=$2
+  show_header "Buildando $build_platform $build_mode"
+  run_command "flutter build $build_platform --dart-define-from-file=.env $build_mode"
+}
+
+build_command() {
+  local platform=$1
+  local build_mode=$2
+  
+  case $platform in
+    # só builda as opções para lançar nas stores
+    store)
+      build "appbundle" "$build_mode"
+      build "ipa" "$build_mode"
+      ;;
+    # só builda as opções para formato mobile
+    mobile)
+      build "apk" "$build_mode"
+      build "appbundle" "$build_mode"
+      build "ios" "$build_mode"
+      build "ipa" "$build_mode"
+      ;;
+    # só builda as opções para formato desktop
+    desktop)
+      build "linux" "$build_mode"
+      build "macos" "$build_mode"
+      build "windows" "$build_mode"
+      ;;
+    # builda as seguintes opções (mobile + desktop + web)
+    all)
+      build "apk" "$build_mode"
+      build "appbundle" "$build_mode"
+      build "ios" "$build_mode"
+      build "ipa" "$build_mode"
+      build "linux" "$build_mode"
+      build "macos" "$build_mode"
+      build "web" "$build_mode"
+      build "windows" "$build_mode"
+      ;;
+    # só builda o formato especificado
+    aar|apk|appbundle|bundle|ios|ios-framework|ipa|linux|macos|macos-framework|web|windows)
+      build "$platform" "$build_mode"
+      ;;
+    *)
+      show_error "Platforma inválida: $platform"
+      show_info "Plataforma disponiveis grupos: store/mobile/desktop/all"
+      show_info "Plataforma disponiveis únicos: aar/apk/appbundle/bundle/ios/ios-framework/ipa/linux/macos/macos-framework/web/windows"
+      exit 1
+      ;;
+  esac
+}
+
+setup_command() {
+  local env_type=$1
+  local env_file=".env.$env_type"
+  
+  if [ ! -f "$env_file" ]; then
+    show_error "$env_file não encontrado!"
+    return 1
+  fi
+  
+  show_header "Configura $env_type"
+  run_command "sed 's/#.*//g' '$env_file' | sed '/^\s*$/d' > '.env'"
+  show_success "$env_type atualizado com sucesso"
+}
+
+start_server_command() {
+  local server_path="$1"
+  local port="${2:-8080}"
+  
+  lsof -ti:$port | xargs kill -9 2>/dev/null || true
+  dart run "$server_path" &
+  lsof -ti:$port
+  sleep 2
+}
+
+# create_new_package() {
+#   local package_name=$1
+#   local platform=$2
+#   local path=${3:-.}
+  
+#   show_header "Criando um novo package: $package_name"
+  
+#   local platform_flag=""
+#   case $platform in
+#     android) platform_flag="--platforms=android";;
+#     ios) platform_flag="--platforms=ios";;
+#     all) platform_flag="--platforms=android,ios";;
+#     flutter) platform_flag="";;
+#   esac
+  
+#   run_command "flutter create --org $DEFAULT_DOMAIN --template=plugin $platform_flag '$package_name'"
+  
+#   if [ "$path" != "." ]; then
+#     run_command "mv '$package_name' '$path/'";
+#     run_command "cd '$path/$package_name' || exit 1";
+#   fi
+  
+#   show_success "Package $package_name criado corretamente"
+# }
+
+show_version() {
+  printf "${BOLD}Version:${RESET} $SCRIPT_VERSION\n"
+}
+
+update_version_single() {
+  local flutter_version=$1
+  local dart_version=$2
+
+  if [ -z "$flutter_version" ] || [ -z "$dart_version" ]; then
+    show_error "falta de parâmetros para o comando update-version"
+    return 1
+  fi
+
+  for file in $(find . -name .tool-versions); do
+    if [[ -f "$file" ]] && grep -q "^flutter " "$file"; then
+      run_command "sed -i.bak \"s/^flutter .*/flutter ${flutter_version}-stable/\" \"$file\""
+      run_command "rm \"$file.bak\""
+      show_success "$file atualizado com sucesso"
+    fi
+  done
+
+  for file in $(find . -name pubspec.yaml); do
+    run_command "sed -i.bak 's/^  sdk: \">=.* <4\\.0\\.0\"/  sdk: \">=${dart_version} <4.0.0\"/' \"$file\""
+    run_command "sed -i.bak 's/^  flutter: \".*\"/  flutter: \"${flutter_version}\"/' \"$file\""
+    run_command "rm \"$file.bak\""
+    show_success "$file atualizado com sucesso"
+  done
+}
+
+install_apk_in_android_emulator_command() {
+  local build_type="${1:---debug}"
+  
+  if [ "$build_type" != "--debug" ] && [ "$build_type" != "--release" ]; then
+    printf "${RED}❌ Erro: Parâmetro inválido. Use --debug ou --release${RESET}\n"
+    exit 1
+  fi
+
+  build_type="${build_type#--}"
+  local apk_name="app-${build_type}.apk"
+  local APK_PATH="build/app/outputs/flutter-apk/${apk_name}"
+  
+  if [ ! -f "$APK_PATH" ]; then
+    printf "${RED}❌ Erro: APK não encontrado em $APK_PATH${RESET}\n"
+    exit 1
+  fi
+
+  printf "${GREEN}✓ Instalando ${apk_name}${RESET}\n"
+  adb install -r "$APK_PATH"
+
+  if [ $? -eq 0 ]; then
+    printf "${GREEN}✓ APK instalado com sucesso${RESET}\n"
+  else
+    printf "${RED}❌ Erro ao instalar APK${RESET}\n"
+    exit 1
+  fi
+}
+
+test_command() {
+  local test_type=$1
+  
+  case $test_type in
+    e2e)
+      start_server_command "test_api_server/bin/test_api_server.dart"
+
+      setup_command "e2e"
+      pubget_command
+      build_command "apk" "--debug"
+
+      open_android_emulator_command
+      install_apk_in_android_emulator_command "--debug"
+
+      maestro test test_e2e
+      # run_command "open -a 'Maestro Studio'"
+      ;;
+    *)
+      flutter test --dart-define-from-file=.env.dev
+      ;;
+  esac
+}
+
+release_command() {
+  local deploy_in=$1
+  local version=$(grep 'version:' pubspec.yaml | awk '{print $2}')
+
+  printf "Verifique se é essa versão que precisará ser lançado: $version\n"
+  read -p "Caso não seja, digite a nova versão, senão apenas aperte enter: " new_version
+  if [ -n "$new_version" ]; then
+    run_command "sed -i '' \"s/version:.*/version: $new_version/\" pubspec.yaml"
+  fi
+
+
+  case $deploy_in in
+    # caso específico do bloomy checkin
+    checkin)
+      if [ "$(git branch --show-current)" != "main" ]; then
+        printf "Não está na main, precisa reorganizar e passar tudo para main antes de gerar o build\n"
+        run_command "open https://github.com/sidedoor-tech/bloomy_app/tree/$(git branch --show-current)"
+        exit 1
+      fi
+
+      setup_command "prod"
+      pubget_command
+      build_command "apk" "--release"
+      run_command "open https://console.firebase.google.com/u/2/project/bebloomy-checkin/appdistribution/app/android:br.com.bebloomy.checkin/releases"
+      run_command "open build/app/outputs/flutter-apk"
+      ;;
+    homolog)
+      setup_command "dev"
+      pubget_command
+      build_command "store" "--release"
+      run_command "open -a Transporter"
+      run_command "open https://play.google.com/console/u/2/developers/6724482268850882130/app-list?pli=1"
+      run_command "open https://appstoreconnect.apple.com/apps"
+      run_command "open build/ios/ipa"
+      run_command "open build/app/outputs/bundle/release"
+      ;;
+    *)
+      if [ "$(git branch --show-current)" != "main" ]; then
+        printf "Não está na main, precisa reorganizar e passar tudo para main antes de gerar o build\n"
+        run_command "open https://github.com/sidedoor-tech/bloomy_app/tree/$(git branch --show-current)"
+        exit 1
+      fi
+
+      setup_command "prod"
+      pubget_command
+      build_command "store" "--release"
+      run_command "open -a Transporter"
+      run_command "open https://play.google.com/console/u/2/developers/6724482268850882130/app-list?pli=1"
+      run_command "open https://appstoreconnect.apple.com/apps"
+      run_command "open build/ios/ipa"
+      run_command "open build/app/outputs/bundle/release"
+      ;;
+  esac
+}
+
+open_android_emulator_command() {
+  if ! command -v adb &> /dev/null; then
+    printf "${RED}❌ Erro: adb não encontrado no seu PATH! Verifique a instalação do Android SDK Platform-Tools.${RESET}"
+    exit 1
+  fi
+  printf "${GREEN}✓ adb encontrado${RESET}\n"
+
+  if ! command -v emulator &> /dev/null; then
+    printf "${RED}❌ Erro: emulator não encontrado no seu PATH! Verifique a instalação do Android SDK Emulator.${RESET}"
+    exit 1
+  fi
+  printf "${GREEN}✓ emulator encontrado${RESET}\n"
+
+  DEVICES=$(adb devices | grep -w "device" | wc -l) # Verifica se há um emulador rodando
+
+  if [ "$DEVICES" -lt 1 ]; then
+    printf "Nenhum emulador ativo. Iniciando emulador...\n"
+    
+    AVDS=$(emulator -list-avds) # Lista emuladores disponíveis
+    
+    if [ -z "$AVDS" ]; then
+      printf "${RED}❌ Erro: Nenhum AVD encontrado! Crie um emulador pelo Android Studio.${RESET}"
+      exit 1
+    fi
+
+    FIRST_AVD=$(echo "$AVDS" | head -n 1) # Pega o primeiro AVD da lista
+    printf "Emulador encontrado: $FIRST_AVD\n"
+
+    emulator -avd "$FIRST_AVD" &> /dev/null &
+    EMULATOR_PID=$!
+
+    adb wait-for-device
+
+    # Espera o boot completar (verifica se boot_completed = 1)
+    while [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" != "1" ]; do
+      echo -n "."
+      sleep 2
+    done
+
+    printf "\n${GREEN}✓ Emulador iniciado completamente${RESET}\n"
+  else
+    printf "${GREEN}✓ Emulador já está ativo${RESET}\n"
+  fi
+}
+
+# ===== MAIN SCRIPT =====
+
+main() {
+  local parsed=$(parse_arguments "$@")
+  local packages_mode=$(echo "$parsed" | cut -d'|' -f1)
+  local specific_package=$(echo "$parsed" | cut -d'|' -f2)
+  local remaining_args=$(echo "$parsed" | cut -d'|' -f3)
+  
+  # Converte remaining_args de volta para array
+  read -ra args_array <<< "$remaining_args"
+  local command=${args_array[0]}
+  
+  case $command in
+    pubget)
+      execute_in_packages "$packages_mode" "$specific_package" "pubget_command"
+      ;;
+
+    clean)
+      execute_in_packages "$packages_mode" "$specific_package" "clean_project_single"
+      ;;
+      
+    format)
+      execute_in_packages "$packages_mode" "$specific_package" "format_code_single"
+      ;;
+
+    update-version)
+      local flutter_version=""
+      local dart_version=""
+
+      for arg in "${args_array[@]:1}"; do
+        case "$arg" in
+          --flutter=*)
+            flutter_version="${arg#*=}"
+            ;;
+          --dart=*)
+            dart_version="${arg#*=}"
+            ;;
+        esac
+      done
+
+      execute_in_packages "$packages_mode" "$specific_package" "update_version_single" "$flutter_version" "$dart_version"
+      ;;
+      
+    setup)
+      local env_type=${args_array[1]:-prod}
+      setup_command "$env_type"
+      ;;
+
+    install-apk)
+      local build_type=${args_array[1]:---debug}
+      install_apk_in_android_emulator_command "$build_type"
+      ;;
+
+    start-server)
+      local server_path="${args_array[1]}"
+      local port="${args_array[2]:-8080}"
+      start_server_command "$server_path" "$port"
+      ;;
+      
+    build)
+      local build_mode="--release"
+      local platform="store"
+
+      for arg in "${args_array[@]:1}"; do
+        case "$arg" in
+          --debug|--profile|--release)
+            build_mode="$arg"
+            ;;
+          store|mobile|desktop|all|aar|apk|appbundle|bundle|ios|ios-framework|ipa|linux|macos|macos-framework|web|windows)
+            platform="$arg"
+            ;;
+        esac
+      done
+      
+      build_command "$platform" "$build_mode"
+      ;;
+    
+    test)
+      local test_type=${args_array[1]:-unit}
+      test_command "$test_type"
+      ;;
+    
+    release)
+      local deploy_in=${args_array[1]:-default}
+      release_command "$deploy_in"
+      ;;
+    
+    open-emulator)
+      open_android_emulator_command
+      ;;
+
+    list)
+      list_packages
+      ;;
+    
+    -v|--version)
+      show_version
+      ;;
+
+    -h|--help|*)
+      show_help
+      ;;
+  esac
+}
+
+# Run the script
+main "$@"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# flutter create
+#
+# If run on a project that already exists, this will repair the project, recreating any files that are missing.
+#
+# -h, --help                   Print this usage information.
+#     --[no-]pub               Whether to run "flutter pub get" after the project has been created.
+#                              (defaults to on)
+#     --[no-]offline           When "flutter pub get" is run by the create command, this indicates whether to run it in
+#                              offline mode or not. In offline mode, it will need to have all dependencies already
+#                              available in the pub cache to succeed.
+#     --[no-]overwrite         When performing operations, overwrite existing files.
+#     --description            The description to use for your new Flutter project. This string ends up in the
+#                              pubspec.yaml file.
+#                              (defaults to "A new Flutter project.")
+#     --org                    The organization responsible for your new Flutter project, in reverse domain name
+#                              notation. This string is used in Java package names and as prefix in the iOS bundle
+#                              identifier.
+#                              (defaults to "com.example")
+#     --project-name           The project name for this new Flutter project. This must be a valid dart package name.
+# -a, --android-language       The language to use for Android-specific code, either Kotlin (recommended) or Java
+#                              (legacy).
+#                              [java, kotlin (default)]
+#     --platforms              The platforms supported by this project. Platform folders (e.g. android/) will be
+#                              generated in the target project. This argument only works when "--template" is set to app
+#                              or plugin. When adding platforms to a plugin project, the pubspec.yaml will be updated
+#                              with the requested platform. Adding desktop platforms requires the corresponding desktop
+#                              config setting to be enabled.
+#                              [ios (default), android (default), windows (default), linux (default), macos (default),
+#                              web (default)]
+# -t, --template=<type>        Specify the type of project to create.
+
+#           [app]              (default) Generate a Flutter application.
+#           [module]           Generate a project to add a Flutter module to an existing Android or iOS application.
+#           [package]          Generate a shareable Flutter project containing modular Dart code.
+#           [plugin]           Generate a shareable Flutter project containing an API in Dart code with a
+#                              platform-specific implementation through method channels for Android, iOS, Linux, macOS,
+#                              Windows, web, or any combination of these.
+#           [plugin_ffi]       Generate a shareable Flutter project containing an API in Dart code with a
+#                              platform-specific implementation through dart:ffi for Android, iOS, Linux, macOS,
+#                              Windows, or any combination of these.
+#           [skeleton]         Formerly generated a list view / detail view Flutter application that followed some
+#                              community best practices. For up to date resources, see
+#                              https://flutter.github.io/samples, https://docs.flutter.dev/codelabs, and community
+#                              resources such as https://flutter-builder.app/.
+
+# -s, --sample=<id>            Specifies the Flutter code sample to use as the "main.dart" for an application. Implies
+#                              "--template=app". The value should be the sample ID of the desired sample from the API
+#                              documentation website (https://api.flutter.dev/). An example can be found at:
+#                              https://api.flutter.dev/flutter/widgets/SingleChildScrollView-class.html
+# -e, --[no-]empty             Specifies creating using an application template with a main.dart that is minimal,
+#                              including no comments, as a starting point for a new application. Implies
+#                              "--template=app".
+#     --list-samples=<path>    Specifies a JSON output file for a listing of Flutter code samples that can be created
+#                              with "--sample".

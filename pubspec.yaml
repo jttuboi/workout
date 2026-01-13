@@ -1,0 +1,29 @@
+name: workout
+description: "App básico para treino físico."
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.4
+
+dependencies:
+  drift: "2.30.1"
+  drift_flutter: "0.2.8"
+  flutter:
+    sdk: flutter
+  flutter_extension:
+    git:
+      url: git@github.com:sidedoor-tech/flutter_packages.git
+      path: flutter_extension
+  path_provider: "2.1.5"
+
+dev_dependencies:
+  build_runner: "2.10.4"
+  drift_dev: "2.30.1"
+  test_extension:
+    git:
+      url: git@github.com:sidedoor-tech/flutter_packages.git
+      path: test_extension
+
+flutter:
+  uses-material-design: true
